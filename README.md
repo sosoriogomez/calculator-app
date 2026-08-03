@@ -1,0 +1,144 @@
+# Full-Stack Calculator
+
+A small calculator application with a Go REST API and a React + TypeScript frontend. The API owns calculation rules and validation; the browser adds immediate input validation and presents API errors clearly.
+
+## Project Layout
+
+```text
+backend/
+  cmd/server/                 HTTP server entry point
+  internal/calculator/        Pure calculation domain and unit tests
+  internal/httpapi/           REST handler, JSON validation, and HTTP tests
+frontend/
+  src/api/                    Typed API client
+  src/components/             Calculator UI and component tests
+  src/test/                    Test setup
+docker-compose.yml            One-command production-style setup
+```
+
+## Prerequisites
+
+- Go 1.22 or newer
+- Node.js 22 or newer and npm
+- Docker and Docker Compose (optional)
+
+## Run Locally
+
+Start the backend:
+
+```bash
+cd backend
+go run ./cmd/server
+```
+
+In another terminal, start the frontend:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Open <http://localhost:5173>. Vite proxies `/api` requests to the Go server at `localhost:8080`.
+
+## Run With Docker
+
+From the repository root:
+
+```bash
+docker compose up --build
+```
+
+Open <http://localhost:3000>. The frontend container serves the built React app and proxies API requests to the backend container.
+
+## API
+
+The API uses one resource-oriented endpoint because every operation has the same lifecycle: submit operands, validate, calculate, and receive a result. The operation is explicit in the JSON resource rather than encoded into seven nearly identical URL paths.
+
+`POST /api/v1/calculations`
+
+All requests use `Content-Type: application/json` and return JSON. `a` is always required. `b` is required except for square root. Percentage means "what percentage is `a` of `b`?", calculated as `(a / b) * 100`.
+
+### Examples
+
+```bash
+# Addition
+curl -X POST http://localhost:8080/api/v1/calculations \
+  -H 'Content-Type: application/json' \
+  -d '{"operation":"add","a":12,"b":8}'
+# {"operation":"add","result":20}
+
+# Subtraction
+curl -X POST http://localhost:8080/api/v1/calculations -H 'Content-Type: application/json' \
+  -d '{"operation":"subtract","a":12,"b":8}'
+# {"operation":"subtract","result":4}
+
+# Multiplication
+curl -X POST http://localhost:8080/api/v1/calculations -H 'Content-Type: application/json' \
+  -d '{"operation":"multiply","a":12,"b":8}'
+# {"operation":"multiply","result":96}
+
+# Division
+curl -X POST http://localhost:8080/api/v1/calculations -H 'Content-Type: application/json' \
+  -d '{"operation":"divide","a":12,"b":8}'
+# {"operation":"divide","result":1.5}
+
+# Exponentiation
+curl -X POST http://localhost:8080/api/v1/calculations -H 'Content-Type: application/json' \
+  -d '{"operation":"power","a":2,"b":8}'
+# {"operation":"power","result":256}
+
+# Square root
+curl -X POST http://localhost:8080/api/v1/calculations -H 'Content-Type: application/json' \
+  -d '{"operation":"sqrt","a":81}'
+# {"operation":"sqrt","result":9}
+
+# Percentage
+curl -X POST http://localhost:8080/api/v1/calculations -H 'Content-Type: application/json' \
+  -d '{"operation":"percentage","a":25,"b":200}'
+# {"operation":"percentage","result":12.5}
+```
+
+Health check: `GET /healthz` returns `{"status":"ok"}`.
+
+Invalid requests use a consistent shape:
+
+```json
+{
+  "error": {
+    "code": "calculation_error",
+    "message": "division by zero"
+  }
+}
+```
+
+Malformed JSON, missing fields, wrong types, and unknown operations return `400 Bad Request`. Valid JSON with an undefined or non-finite calculation returns `422 Unprocessable Entity`. The API rejects division by zero, square roots of negative values, `0^0`, zero raised to a negative exponent, percentage calculations with a zero base, and non-finite results from exponentiation.
+
+## Tests and Coverage
+
+Backend tests cover pure arithmetic and HTTP behavior:
+
+```bash
+cd backend
+gofmt -w .
+go test ./... -coverprofile=coverage.out
+go tool cover -func=coverage.out
+```
+
+Frontend tests use Vitest and React Testing Library:
+
+```bash
+cd frontend
+npm install
+npm run test:coverage
+```
+
+The Vitest configuration enforces 90% line, function, branch, and statement coverage. The backend suite is designed for the same target; the exact percentage is emitted by `go tool cover`.
+
+## Design Decisions
+
+- **Single endpoint:** The operation parameter avoids duplicating transport code while still keeping the API versioned and explicit. The pure calculator package is independent of HTTP and easy to extend.
+- **Validation ownership:** JSON shape and numeric parsing happen at the HTTP boundary. Operation-specific rules live in the domain package so they apply consistently to every caller.
+- **Numeric policy:** JSON numbers must decode as finite Go `float64` values, and non-finite results are rejected instead of returning `Infinity` or `NaN`.
+- **Error contract:** Client mistakes are `400`; mathematically undefined or unrepresentable calculations are `422`. Both use a stable `{ error: { code, message } }` body.
+- **Scope trade-off:** There is no persistence or authentication because calculations are stateless. CORS is limited to the local Vite origin; Docker uses an Nginx same-origin proxy.
