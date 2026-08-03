@@ -6,9 +6,10 @@ A small calculator application with a Go REST API and a React + TypeScript front
 
 ```text
 backend/
-  cmd/server/                 HTTP server entry point
-  internal/calculator/        Pure calculation domain and unit tests
-  internal/httpapi/           REST handler, JSON validation, and HTTP tests
+  cmd/server/                 Composition root and HTTP server entry point
+  internal/domain/calculation Domain operations, value object, aggregate, and tests
+  internal/application/       Calculate use case and application tests
+  internal/interfaces/httpapi HTTP transport adapter and request/response tests
 frontend/
   src/api/                    Typed API client
   src/components/             Calculator UI and component tests
@@ -137,8 +138,9 @@ The Vitest configuration enforces 90% line, function, branch, and statement cove
 
 ## Design Decisions
 
-- **Single endpoint:** The operation parameter avoids duplicating transport code while still keeping the API versioned and explicit. The pure calculator package is independent of HTTP and easy to extend.
-- **Validation ownership:** JSON shape and numeric parsing happen at the HTTP boundary. Operation-specific rules live in the domain package so they apply consistently to every caller.
+- **Single endpoint:** The operation parameter avoids duplicating transport code while still keeping the API versioned and explicit. The application service invokes one domain aggregate for every calculation.
+- **DDD boundaries:** The calculation domain owns operations, the finite-number value object, invariants, and execution. The application layer translates commands into domain objects and classifies invalid commands. The HTTP package only handles transport concerns and is wired to the use case by the composition root.
+- **Validation ownership:** JSON shape and numeric parsing happen at the HTTP boundary. Numeric value creation, required operands, and operation-specific rules live in the domain package so they apply consistently to every caller.
 - **Numeric policy:** JSON numbers must decode as finite Go `float64` values, and non-finite results are rejected instead of returning `Infinity` or `NaN`.
 - **Error contract:** Client mistakes are `400`; mathematically undefined or unrepresentable calculations are `422`. Both use a stable `{ error: { code, message } }` body.
 - **Scope trade-off:** There is no persistence or authentication because calculations are stateless. CORS is limited to the local Vite origin; Docker uses an Nginx same-origin proxy.
