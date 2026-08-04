@@ -1,0 +1,459 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>server: Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">calculator-app/backend/cmd/server/main.go (0.0%)</option>
+				
+				<option value="file1">calculator-app/backend/internal/application/calculation/service.go (88.0%)</option>
+				
+				<option value="file2">calculator-app/backend/internal/domain/calculation/calculation.go (100.0%)</option>
+				
+				<option value="file3">calculator-app/backend/internal/domain/calculation/number.go (100.0%)</option>
+				
+				<option value="file4">calculator-app/backend/internal/domain/calculation/operation.go (100.0%)</option>
+				
+				<option value="file5">calculator-app/backend/internal/interfaces/httpapi/handler.go (97.3%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">not covered</span>
+				<span class="cov8">covered</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">package main
+
+import (
+        "log"
+        "net/http"
+        "os"
+
+        appcalculation "calculator-app/backend/internal/application/calculation"
+        "calculator-app/backend/internal/interfaces/httpapi"
+)
+
+func main() <span class="cov0" title="0">{
+        port := os.Getenv("PORT")
+        if port == "" </span><span class="cov0" title="0">{ port = "8080" }</span>
+        <span class="cov0" title="0">service := appcalculation.NewService()
+        log.Printf("calculator API listening on :%s", port)
+        if err := http.ListenAndServe(":"+port, httpapi.NewHandler(service)); err != nil </span><span class="cov0" title="0">{ log.Fatal(err) }</span>
+}
+</pre>
+		
+		<pre class="file" id="file1" style="display: none">package calculation
+
+import (
+        "context"
+        "errors"
+        "fmt"
+
+        domain "calculator-app/backend/internal/domain/calculation"
+)
+
+var ErrInvalidCommand = errors.New("invalid calculation command")
+
+type Command struct {
+        Operation string
+        A float64
+        B *float64
+}
+
+type Result struct {
+        Operation string
+        Value float64
+}
+
+type Service struct{}
+
+func NewService() *Service <span class="cov8" title="1">{ return &amp;Service{} }</span>
+
+func (service *Service) Calculate(ctx context.Context, command Command) (Result, error) <span class="cov8" title="1">{
+        select </span>{
+        case &lt;-ctx.Done():<span class="cov8" title="1">
+                return Result{}, ctx.Err()</span>
+        default:<span class="cov8" title="1"></span>
+        }
+        <span class="cov8" title="1">operation, err := domain.ParseOperation(command.Operation)
+        if err != nil </span><span class="cov8" title="1">{ return Result{}, invalidCommand(err) }</span>
+        <span class="cov8" title="1">left, err := domain.NewNumber(command.A)
+        if err != nil </span><span class="cov0" title="0">{ return Result{}, invalidCommand(err) }</span>
+        <span class="cov8" title="1">var right *domain.Number
+        if command.B != nil </span><span class="cov8" title="1">{
+                value, numberErr := domain.NewNumber(*command.B)
+                if numberErr != nil </span><span class="cov0" title="0">{ return Result{}, invalidCommand(numberErr) }</span>
+                <span class="cov8" title="1">right = &amp;value</span>
+        }
+        <span class="cov8" title="1">calculation, err := domain.NewCalculation(operation, left, right)
+        if err != nil </span><span class="cov8" title="1">{
+                if errors.Is(err, domain.ErrMissingOperand) || errors.Is(err, domain.ErrUnexpectedOperand) </span><span class="cov8" title="1">{ return Result{}, invalidCommand(err) }</span>
+                <span class="cov8" title="1">return Result{}, err</span>
+        }
+        <span class="cov8" title="1">value, err := calculation.Execute()
+        if err != nil </span><span class="cov0" title="0">{ return Result{}, err }</span>
+        <span class="cov8" title="1">return Result{Operation: command.Operation, Value: value.Value()}, nil</span>
+}
+
+func invalidCommand(err error) error <span class="cov8" title="1">{ return fmt.Errorf("%w: %v", ErrInvalidCommand, err) }</span>
+</pre>
+		
+		<pre class="file" id="file2" style="display: none">package calculation
+
+import "math"
+
+// Calculation is the aggregate representing one requested operation and its
+// operands. Its constructor enforces invariants before execution is allowed.
+type Calculation struct {
+        operation Operation
+        left Number
+        right *Number
+}
+
+func NewCalculation(operation Operation, left Number, right *Number) (Calculation, error) <span class="cov8" title="1">{
+        switch operation </span>{
+        case Add, Subtract, Multiply, Divide, Power, Sqrt, Percent:<span class="cov8" title="1"></span>
+        default:<span class="cov8" title="1">
+                return Calculation{}, ErrUnknownOperation</span>
+        }
+        <span class="cov8" title="1">if operation.requiresRightOperand() &amp;&amp; right == nil </span><span class="cov8" title="1">{
+                return Calculation{}, ErrMissingOperand
+        }</span>
+        <span class="cov8" title="1">if operation == Sqrt &amp;&amp; right != nil </span><span class="cov8" title="1">{
+                return Calculation{}, ErrUnexpectedOperand
+        }</span>
+        <span class="cov8" title="1">if operation == Divide &amp;&amp; right.Value() == 0 </span><span class="cov8" title="1">{
+                return Calculation{}, ErrDivisionByZero
+        }</span>
+        <span class="cov8" title="1">if operation == Percent &amp;&amp; right.Value() == 0 </span><span class="cov8" title="1">{
+                return Calculation{}, ErrZeroBase
+        }</span>
+        <span class="cov8" title="1">if operation == Sqrt &amp;&amp; left.Value() &lt; 0 </span><span class="cov8" title="1">{
+                return Calculation{}, ErrNegativeRoot
+        }</span>
+        <span class="cov8" title="1">if operation == Power </span><span class="cov8" title="1">{
+                if left.Value() == 0 &amp;&amp; right.Value() == 0 </span><span class="cov8" title="1">{
+                        return Calculation{}, ErrZeroToZero
+                }</span>
+                <span class="cov8" title="1">if left.Value() == 0 &amp;&amp; right.Value() &lt; 0 </span><span class="cov8" title="1">{
+                        return Calculation{}, ErrZeroNegative
+                }</span>
+        }
+        <span class="cov8" title="1">return Calculation{operation: operation, left: left, right: right}, nil</span>
+}
+
+func (calculation Calculation) Execute() (Number, error) <span class="cov8" title="1">{
+        left := calculation.left.Value()
+        var result float64
+        if calculation.right != nil </span><span class="cov8" title="1">{
+                right := calculation.right.Value()
+                switch calculation.operation </span>{
+                case Add:<span class="cov8" title="1">
+                        result = left + right</span>
+                case Subtract:<span class="cov8" title="1">
+                        result = left - right</span>
+                case Multiply:<span class="cov8" title="1">
+                        result = left * right</span>
+                case Divide:<span class="cov8" title="1">
+                        result = left / right</span>
+                case Power:<span class="cov8" title="1">
+                        result = math.Pow(left, right)</span>
+                case Percent:<span class="cov8" title="1">
+                        result = (left / right) * 100</span>
+                }
+        } else<span class="cov8" title="1"> {
+                result = math.Sqrt(left)
+        }</span>
+        <span class="cov8" title="1">if math.IsNaN(result) || math.IsInf(result, 0) </span><span class="cov8" title="1">{
+                return Number{}, ErrNonFiniteResult
+        }</span>
+        <span class="cov8" title="1">return NewNumber(result)</span>
+}
+</pre>
+		
+		<pre class="file" id="file3" style="display: none">package calculation
+
+import "math"
+
+// Number is the calculator's finite-number value object. Keeping the raw
+// float private prevents invalid values from entering the domain model.
+type Number struct {
+        value float64
+}
+
+func NewNumber(value float64) (Number, error) <span class="cov8" title="1">{
+        if math.IsNaN(value) || math.IsInf(value, 0) </span><span class="cov8" title="1">{
+                return Number{}, ErrNonFiniteNumber
+        }</span>
+        <span class="cov8" title="1">return Number{value: value}, nil</span>
+}
+
+func (number Number) Value() float64 <span class="cov8" title="1">{
+        return number.value
+}</span>
+</pre>
+		
+		<pre class="file" id="file4" style="display: none">package calculation
+
+import "fmt"
+
+type Operation string
+
+const (
+        Add Operation = "add"
+        Subtract Operation = "subtract"
+        Multiply Operation = "multiply"
+        Divide Operation = "divide"
+        Power Operation = "power"
+        Sqrt Operation = "sqrt"
+        Percent Operation = "percentage"
+)
+
+func ParseOperation(value string) (Operation, error) <span class="cov8" title="1">{
+        operation := Operation(value)
+        switch operation </span>{
+        case Add, Subtract, Multiply, Divide, Power, Sqrt, Percent:<span class="cov8" title="1">
+                return operation, nil</span>
+        default:<span class="cov8" title="1">
+                return "", fmt.Errorf("%w: %s", ErrUnknownOperation, value)</span>
+        }
+}
+
+func (operation Operation) requiresRightOperand() bool <span class="cov8" title="1">{
+        return operation != Sqrt
+}</span>
+</pre>
+		
+		<pre class="file" id="file5" style="display: none">package httpapi
+
+import (
+        _ "embed"
+        "encoding/json"
+        "errors"
+        "io"
+        "net/http"
+        "strings"
+
+        appcalculation "calculator-app/backend/internal/application/calculation"
+)
+
+type Handler struct {
+        service *appcalculation.Service
+}
+
+//go:embed openapi.yaml
+var openAPISpec []byte
+
+const swaggerUIPage = `&lt;!doctype html&gt;
+&lt;html lang="en"&gt;
+&lt;head&gt;&lt;meta charset="UTF-8"&gt;&lt;meta name="viewport" content="width=device-width, initial-scale=1"&gt;&lt;title&gt;Calculator API Docs&lt;/title&gt;&lt;link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css"&gt;&lt;/head&gt;
+&lt;body&gt;&lt;div id="swagger-ui"&gt;&lt;/div&gt;&lt;script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"&gt;&lt;/script&gt;&lt;script&gt;window.onload=()=&gt;SwaggerUIBundle({url:'/openapi.yaml',dom_id:'#swagger-ui',deepLinking:true});&lt;/script&gt;&lt;/body&gt;
+&lt;/html&gt;`
+
+type calculationRequest struct {
+        Operation string          `json:"operation"`
+        A         json.RawMessage `json:"a"`
+        B         json.RawMessage `json:"b"`
+}
+
+type calculationResponse struct {
+        Operation string  `json:"operation"`
+        Result    float64 `json:"result"`
+}
+
+type errorResponse struct {
+        Error struct {
+                Code    string `json:"code"`
+                Message string `json:"message"`
+        } `json:"error"`
+}
+
+func NewHandler(service *appcalculation.Service) http.Handler <span class="cov8" title="1">{
+        handler := &amp;Handler{service: service}
+        mux := http.NewServeMux()
+        mux.HandleFunc("GET /healthz", handler.health)
+        mux.HandleFunc("GET /openapi.yaml", handler.openapi)
+        mux.HandleFunc("GET /docs", handler.docs)
+        mux.HandleFunc("POST /api/v1/calculations", handler.calculate)
+        return cors(mux)
+}</span>
+
+func (handler *Handler) health(w http.ResponseWriter, _ *http.Request) <span class="cov8" title="1">{
+        writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}</span>
+
+func (handler *Handler) openapi(w http.ResponseWriter, _ *http.Request) <span class="cov8" title="1">{
+        w.Header().Set("Content-Type", "application/yaml; charset=utf-8")
+        w.WriteHeader(http.StatusOK)
+        _, _ = w.Write(openAPISpec)
+}</span>
+
+func (handler *Handler) docs(w http.ResponseWriter, _ *http.Request) <span class="cov8" title="1">{
+        w.Header().Set("Content-Type", "text/html; charset=utf-8")
+        w.WriteHeader(http.StatusOK)
+        _, _ = w.Write([]byte(swaggerUIPage))
+}</span>
+
+func (handler *Handler) calculate(w http.ResponseWriter, r *http.Request) <span class="cov8" title="1">{
+        contentType := r.Header.Get("Content-Type")
+        if contentType != "application/json" &amp;&amp; !strings.HasPrefix(contentType, "application/json;") </span><span class="cov8" title="1">{
+                writeError(w, http.StatusBadRequest, "invalid_content_type", "Content-Type must be application/json")
+                return
+        }</span>
+        <span class="cov8" title="1">decoder := json.NewDecoder(r.Body)
+        decoder.DisallowUnknownFields()
+        var request calculationRequest
+        if err := decoder.Decode(&amp;request); err != nil </span><span class="cov8" title="1">{
+                message := "request body must be valid JSON"
+                if errors.Is(err, io.EOF) </span><span class="cov8" title="1">{ message = "request body is required" }</span>
+                <span class="cov8" title="1">writeError(w, http.StatusBadRequest, "invalid_json", message)
+                return</span>
+        }
+        <span class="cov8" title="1">var extra any
+        if err := decoder.Decode(&amp;extra); err != io.EOF </span><span class="cov8" title="1">{
+                writeError(w, http.StatusBadRequest, "invalid_json", "request body must contain exactly one JSON object")
+                return
+        }</span>
+        <span class="cov8" title="1">a, err := parseNumber(request.A, "a")
+        if err != nil </span><span class="cov8" title="1">{ writeError(w, http.StatusBadRequest, "invalid_operand", err.Error()); return }</span>
+        <span class="cov8" title="1">b, err := parseOptionalNumber(request.B, "b")
+        if err != nil </span><span class="cov0" title="0">{ writeError(w, http.StatusBadRequest, "invalid_operand", err.Error()); return }</span>
+        <span class="cov8" title="1">result, err := handler.service.Calculate(r.Context(), appcalculation.Command{Operation: request.Operation, A: *a, B: b})
+        if err != nil </span><span class="cov8" title="1">{
+                status, code := http.StatusUnprocessableEntity, "calculation_error"
+                if errors.Is(err, appcalculation.ErrInvalidCommand) </span><span class="cov8" title="1">{
+                        status, code = http.StatusBadRequest, "invalid_request"
+                }</span>
+                <span class="cov8" title="1">writeError(w, status, code, domainMessage(err))
+                return</span>
+        }
+        <span class="cov8" title="1">writeJSON(w, http.StatusOK, calculationResponse{Operation: result.Operation, Result: result.Value})</span>
+}
+
+func parseNumber(raw json.RawMessage, name string) (*float64, error) <span class="cov8" title="1">{
+        if len(raw) == 0 || string(raw) == "null" </span><span class="cov8" title="1">{ return nil, errors.New(name + " is required") }</span>
+        <span class="cov8" title="1">var value float64
+        if err := json.Unmarshal(raw, &amp;value); err != nil </span><span class="cov8" title="1">{ return nil, errors.New(name + " must be a number") }</span>
+        <span class="cov8" title="1">return &amp;value, nil</span>
+}
+
+func parseOptionalNumber(raw json.RawMessage, name string) (*float64, error) <span class="cov8" title="1">{
+        if len(raw) == 0 || string(raw) == "null" </span><span class="cov8" title="1">{ return nil, nil }</span>
+        <span class="cov8" title="1">return parseNumber(raw, name)</span>
+}
+
+func domainMessage(err error) string <span class="cov8" title="1">{
+        if wrapped := strings.TrimPrefix(err.Error(), appcalculation.ErrInvalidCommand.Error()+": "); wrapped != err.Error() </span><span class="cov8" title="1">{ return wrapped }</span>
+        <span class="cov8" title="1">return err.Error()</span>
+}
+
+func writeError(w http.ResponseWriter, status int, code, message string) <span class="cov8" title="1">{
+        response := errorResponse{}
+        response.Error.Code, response.Error.Message = code, message
+        writeJSON(w, status, response)
+}</span>
+
+func writeJSON(w http.ResponseWriter, status int, value any) <span class="cov8" title="1">{
+        w.Header().Set("Content-Type", "application/json")
+        w.WriteHeader(status)
+        _ = json.NewEncoder(w).Encode(value)
+}</span>
+
+func cors(next http.Handler) http.Handler <span class="cov8" title="1">{
+        return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) </span><span class="cov8" title="1">{
+                w.Header().Set("Access-Control-Allow-Origin", "http://localhost:5173")
+                w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+                w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+                if r.Method == http.MethodOptions </span><span class="cov8" title="1">{ w.WriteHeader(http.StatusNoContent); return }</span>
+                <span class="cov8" title="1">next.ServeHTTP(w, r)</span>
+        })
+}
+</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>

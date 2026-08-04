@@ -130,6 +130,7 @@ cd backend
 gofmt -w .
 go test ./... -coverprofile=coverage.out
 go tool cover -func=coverage.out
+go tool cover -html=coverage.out -o coverage.html
 ```
 
 Frontend tests use Vitest and React Testing Library:
@@ -141,6 +142,15 @@ npm run test:coverage
 ```
 
 The Vitest configuration enforces 90% line, function, branch, and statement coverage. The backend suite is designed for the same target; the exact percentage is emitted by `go tool cover`.
+
+Coverage artifacts are committed for review:
+
+- Backend profile: [`backend/coverage.out`](backend/coverage.out)
+- Backend HTML report: [`backend/coverage.html`](backend/coverage.html)
+- Frontend HTML report: [`frontend/coverage/index.html`](frontend/coverage/index.html)
+- Frontend detailed report: [`frontend/coverage/lcov-report/index.html`](frontend/coverage/lcov-report/index.html)
+
+The latest generated reports show 91.8% backend statement coverage and 100% frontend statements, lines, and functions with 91.48% frontend branch coverage. Run the commands above to regenerate them after code changes.
 
 ## Design Decisions
 
