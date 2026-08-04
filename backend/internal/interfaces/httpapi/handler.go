@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	_ "embed"
 	"encoding/json"
 	"errors"
 	"io"
@@ -13,6 +14,15 @@ import (
 type Handler struct {
 	service *appcalculation.Service
 }
+
+//go:embed openapi.yaml
+var openAPISpec []byte
+
+const swaggerUIPage = `<!doctype html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Calculator API Docs</title><link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css"></head>
+<body><div id="swagger-ui"></div><script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script><script>window.onload=()=>SwaggerUIBundle({url:'/openapi.yaml',dom_id:'#swagger-ui',deepLinking:true});</script></body>
+</html>`
 
 type calculationRequest struct {
 	Operation string          `json:"operation"`
@@ -36,12 +46,26 @@ func NewHandler(service *appcalculation.Service) http.Handler {
 	handler := &Handler{service: service}
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", handler.health)
+	mux.HandleFunc("GET /openapi.yaml", handler.openapi)
+	mux.HandleFunc("GET /docs", handler.docs)
 	mux.HandleFunc("POST /api/v1/calculations", handler.calculate)
 	return cors(mux)
 }
 
 func (handler *Handler) health(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+func (handler *Handler) openapi(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Content-Type", "application/yaml; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(openAPISpec)
+}
+
+func (handler *Handler) docs(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write([]byte(swaggerUIPage))
 }
 
 func (handler *Handler) calculate(w http.ResponseWriter, r *http.Request) {

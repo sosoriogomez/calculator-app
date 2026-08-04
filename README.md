@@ -52,6 +52,12 @@ docker compose up --build
 
 Open <http://localhost:3000>. The frontend container serves the built React app and proxies API requests to the backend container.
 
+## Swagger Documentation
+
+The OpenAPI specification is available at `GET /openapi.yaml`. When running locally, open <http://localhost:8080/docs> for Swagger UI. With Docker Compose, open <http://localhost:3000/docs>.
+
+The Swagger UI loads its presentation assets from `unpkg.com`; the raw specification remains available locally even without that CDN connection at `/openapi.yaml`.
+
 ## API
 
 The API uses one resource-oriented endpoint because every operation has the same lifecycle: submit operands, validate, calculate, and receive a result. The operation is explicit in the JSON resource rather than encoded into seven nearly identical URL paths.

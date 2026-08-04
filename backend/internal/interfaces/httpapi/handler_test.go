@@ -43,3 +43,13 @@ func TestHealthAndCORS(t *testing.T) {
 	options := request(t, "OPTIONS", "/api/v1/calculations", "", "")
 	if options.Code != http.StatusNoContent { t.Errorf("OPTIONS status = %d", options.Code) }
 }
+
+func TestAPIDocumentation(t *testing.T) {
+	for _, path := range []string{"/openapi.yaml", "/docs"} {
+		req := httptest.NewRequest(http.MethodGet, path, nil)
+		response := httptest.NewRecorder()
+		NewHandler(appcalculation.NewService()).ServeHTTP(response, req)
+		if response.Code != http.StatusOK { t.Errorf("%s status = %d", path, response.Code) }
+		if response.Body.Len() == 0 { t.Errorf("%s returned an empty body", path) }
+	}
+}
